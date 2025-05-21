@@ -3,6 +3,8 @@ import data from './data_next.json';
 const scale = 175;
 const translation = [77000, 0, 10];
 
+console.log('Importing Navigation');
+
 const navigation = {
 	nodes: Object.fromEntries(
 		Object.entries(data.paths.nodes).map(([key, value]) => [
@@ -17,6 +19,8 @@ const navigation = {
 	edges: data.paths.edges,
 	info: data.paths.infos
 };
+
+console.log('Finish Importing Navigation');
 
 export default {
 	...data,
