@@ -122,9 +122,9 @@
 
 		teleportCamera(
 			[
-				(camera.position.x / camera.zoom) * 20,
-				(camera.position.y / camera.zoom) * 20,
-				(camera.position.z / camera.zoom) * 20
+				camera.position.x / camera.zoom / 25000,
+				camera.position.y / camera.zoom / 25000 + 0.5,
+				camera.position.z / camera.zoom / 25000
 			],
 			[camera.quaternion.x, camera.quaternion.y, camera.quaternion.z, camera.quaternion.w]
 		);

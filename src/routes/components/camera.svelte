@@ -12,10 +12,10 @@
 	} = $props();
 
 	const { dom, invalidate } = useThrelte();
-	const camera = new PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 10000);
+	const camera = new PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100000);
 
 	controls = new CameraControls(dom, camera);
-	
+
 	// Fix FOV by disabling zoom effects on FOV
 	controls.minZoom = 1;
 	controls.maxZoom = 1;

@@ -1,7 +1,7 @@
 import data from './data_next.json';
 
-const scale = 0.2;
-const translation = [0, 0, 0];
+const scale = 175;
+const translation = [77000, 0, 10];
 
 const navigation = {
 	nodes: Object.fromEntries(
