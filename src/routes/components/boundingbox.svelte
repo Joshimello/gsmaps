@@ -66,12 +66,12 @@
 
 <T.Group bind:ref={meshRef} onclick={onSelect}>
 	<!-- <T.AxesHelper args={[100]} /> -->
-	<!-- {#each geometry() as line, i (i)}
+	{#each geometry() as line, i (i)}
 		<T.Mesh>
-			<T.TubeGeometry args={[new THREE.LineCurve3(line[0], line[1]), 1, 20, 8, false]} />
+			<T.TubeGeometry args={[new THREE.LineCurve3(line[0], line[1]), 1, 0.1, 8, false]} />
 			<T.MeshBasicMaterial color={'white'} />
 		</T.Mesh>
-	{/each} -->
+	{/each}
 	<T.Mesh geometry={shapeGeometry()} position={[0, startHeight, 0]} rotation={[Math.PI / 2, 0, 0]}>
 		<T.MeshBasicMaterial visible={false} />
 	</T.Mesh>

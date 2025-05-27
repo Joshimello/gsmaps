@@ -1,7 +1,7 @@
 import data from './data_next.json';
 
-const scale = 175;
-const translation = [77000, 0, 10];
+const scale = 1;
+const translation = [0, 0, 0];
 
 console.log('Importing Navigation');
 

@@ -12,7 +12,7 @@
 	} = $props();
 
 	const { dom, invalidate } = useThrelte();
-	const camera = new PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100000);
+	const camera = new PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000000);
 
 	controls = new CameraControls(dom, camera);
 
