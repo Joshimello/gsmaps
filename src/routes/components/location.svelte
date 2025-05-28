@@ -65,7 +65,7 @@
 	onSelect={handleSelect}
 />
 
-{#if data.name.en && false}
+{#if data.name.en}
 	<Label
 		position={[
 			data.geometry.coordinates.reduce((acc: number, curr: [number, number]) => acc + curr[0], 0) /

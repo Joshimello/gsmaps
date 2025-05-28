@@ -36,8 +36,8 @@
 
 			// Create points for the line
 			const points = [
-				new Vector3(node1.coordinates[0], node1.coordinates[2] - 40, node1.coordinates[1]),
-				new Vector3(node2.coordinates[0], node2.coordinates[2] - 40, node2.coordinates[1])
+				new Vector3(node1.coordinates[0], node1.coordinates[2] - 10, node1.coordinates[1]),
+				new Vector3(node2.coordinates[0], node2.coordinates[2] - 10, node2.coordinates[1])
 			];
 
 			const roadType = data.navigation.info[edge.info_id]?.type || 'default';
@@ -76,11 +76,11 @@
 	}
 
 	const roads = createSimpleRoads();
-	
+
 	// Debug coordinate ranges and data structure
 	if (roads.length > 0) {
 		console.log(`Total roads created: ${roads.length}`);
-		
+
 		// Sample first few roads for debugging
 		roads.slice(0, 3).forEach((road, i) => {
 			const points = road.geometry.attributes.position.array;
@@ -92,13 +92,16 @@
 				end: [points[3], points[4], points[5]]
 			});
 		});
-		
+
 		// Check coordinate ranges
-		let minX = Infinity, maxX = -Infinity;
-		let minY = Infinity, maxY = -Infinity;
-		let minZ = Infinity, maxZ = -Infinity;
-		
-		roads.forEach(road => {
+		let minX = Infinity,
+			maxX = -Infinity;
+		let minY = Infinity,
+			maxY = -Infinity;
+		let minZ = Infinity,
+			maxZ = -Infinity;
+
+		roads.forEach((road) => {
 			const points = road.geometry.attributes.position.array;
 			for (let i = 0; i < points.length; i += 3) {
 				minX = Math.min(minX, points[i]);
@@ -109,10 +112,10 @@
 				maxZ = Math.max(maxZ, points[i + 2]);
 			}
 		});
-		
+
 		console.log('Coordinate ranges:', {
 			x: [minX, maxX],
-			y: [minY, maxY], 
+			y: [minY, maxY],
 			z: [minZ, maxZ]
 		});
 	} else {
