@@ -7,7 +7,6 @@
 	import Location from './location.svelte';
 	import { navigation, type Node, pickTwoRandomNodes } from './navigation';
 	import Roads from './roads.svelte';
-	import SplatRenderer from './splat-renderer.svelte';
 
 	interactivity();
 
@@ -26,11 +25,11 @@
 	generateNewPath();
 </script>
 
-{#if states.mode == 'three'}
+<!-- {#if states.mode == 'three'}
 	<T.Group rotation={[-Math.PI / 2, 0, 0]} scale={[100, 100, 100]} position={[0, -20, 20]}>
 		<SplatRenderer />
 	</T.Group>
-{/if}
+{/if} -->
 
 {#each data.locations as location}
 	<Location
@@ -49,7 +48,7 @@
 <Roads defaultColor="#666666" highlightedPath={pathIds} highlightColor="#ff4444" />
 
 <!-- Render navigation nodes -->
-<T.Group>
+<!-- <T.Group>
 	{#each colorNodes as colorNode}
 		<T.Mesh
 			position={[colorNode.locations[0], colorNode.locations[2] - 40, colorNode.locations[1]]}
@@ -64,6 +63,6 @@
 			<T.MeshBasicMaterial />
 		</T.Mesh>
 	{/each}
-</T.Group>
+</T.Group> -->
 
 <Camera bind:controls={states.controls} />
