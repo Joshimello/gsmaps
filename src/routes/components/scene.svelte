@@ -47,12 +47,8 @@
 <!-- Render roads -->
 <Roads 
 	defaultColor="#666666" 
-	defaultWidth={0.3} 
-	segments={64} 
 	highlightedPath={pathIds}
 	highlightColor="#ff4444"
-	highlightWidth={0.5}
-	useContinuousRoads={false}
 />
 
 <!-- Render navigation nodes -->
