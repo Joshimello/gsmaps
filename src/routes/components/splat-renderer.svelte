@@ -16,7 +16,7 @@
 			sharedMemoryForWorkers: false,
 			showLoadingUI: true
 		});
-		const addParams = [{ path: 'nthu_campus_part.compressed.ply' }];
+		const addParams = [{ path: 'nthu_campus_part.compressed.ksplat' }];
 
 		try {
 			toast.promise(
