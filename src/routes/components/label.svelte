@@ -27,7 +27,7 @@
 		const distance = cameraPos.distanceTo(labelPosition);
 		const normalizedDistance = Math.min(distance / maxDistance, 1);
 		const easedDistance = cubicOut(normalizedDistance);
-		opacity = 1 * (1 - easedDistance);
+		opacity = 1.5 * (1 - easedDistance);
 		if (opacity < 0.1) {
 			opacity = 0;
 		}

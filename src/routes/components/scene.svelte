@@ -12,16 +12,18 @@
 
 	let randomNodes: Node[] = [];
 	let colorNodes: Node[] = [];
-	let pathIds: string[] = [];
+
+	// Use navigation path from states, fallback to random path for demo
+	const pathIds = $derived(states.navigationPath.length > 0 ? states.navigationPath : []);
 
 	function generateNewPath() {
 		randomNodes = pickTwoRandomNodes();
 		const navigationResult = navigation(randomNodes);
 		colorNodes = navigationResult.nodes;
-		pathIds = navigationResult.pathIds;
+		// Don't set pathIds here anymore, it comes from states
 	}
 
-	// Generate initial path
+	// Generate initial path for demo
 	generateNewPath();
 </script>
 
@@ -45,7 +47,7 @@
 <T.AmbientLight intensity={0.4} />
 
 <!-- Render roads -->
-<Roads defaultColor="#666666" highlightedPath={pathIds} highlightColor="#ff4444" />
+<Roads defaultColor="#666666" highlightedPath={pathIds} highlightColor="#ff6b35" />
 
 <!-- Render navigation nodes -->
 <!-- <T.Group>

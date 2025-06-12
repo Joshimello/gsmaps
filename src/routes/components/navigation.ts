@@ -4,6 +4,7 @@ export type Node = {
 	id: string;
 	locations: number[];
 	edges: number[];
+	coordinates: number[];
 };
 
 export class PriorityQueue<T> {

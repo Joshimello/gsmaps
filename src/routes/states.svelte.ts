@@ -4,8 +4,10 @@ export const states: {
 	mode: 'three' | 'omni';
 	controls: CC | undefined;
 	currentId: number;
+	navigationPath: string[];
 } = $state({
 	mode: 'three',
 	controls: undefined,
-	currentId: 0
+	currentId: 0,
+	navigationPath: []
 });
