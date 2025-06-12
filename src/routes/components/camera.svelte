@@ -15,6 +15,7 @@
 	const camera = new PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000000);
 
 	controls = new CameraControls(dom, camera);
+	console.log('Camera controls initialized:', controls);
 
 	// Fix FOV by disabling zoom effects on FOV
 	controls.minZoom = 1;
@@ -29,6 +30,13 @@
 	controls.mouseButtons.wheel = CameraControls.ACTION.DOLLY;
 
 	controls.truckSpeed = 2;
+
+	// Debug log when controls are fully set up
+	console.log('Camera controls setup complete, available methods:', {
+		setPosition: typeof controls.setPosition,
+		setLookAt: typeof controls.setLookAt,
+		enabled: controls.enabled
+	});
 
 	useTask(
 		(delta) => {

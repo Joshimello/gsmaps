@@ -20,11 +20,18 @@
 		randomNodes = pickTwoRandomNodes();
 		const navigationResult = navigation(randomNodes);
 		colorNodes = navigationResult.nodes;
-		// Don't set pathIds here anymore, it comes from states
+		// Set the navigation path in states for the slider to use
+		states.navigationPath = navigationResult.pathIds;
+		console.log('Generated demo navigation path:', navigationResult.pathIds);
 	}
 
 	// Generate initial path for demo
 	generateNewPath();
+
+	// Listen for demo path generation events
+	if (typeof window !== 'undefined') {
+		window.addEventListener('generateDemoPath', generateNewPath);
+	}
 </script>
 
 <!-- {#if states.mode == 'three'}
