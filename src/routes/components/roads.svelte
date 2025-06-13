@@ -183,7 +183,7 @@
 	{#each highlightedRoads as road}
 		<T.Mesh>
 			<MeshLineGeometry points={road.points} />
-			<MeshLineMaterial width={4.0} color={road.color} depthTest={false} />
+			<MeshLineMaterial width={4.0} color={road.color} depthTest={true} />
 		</T.Mesh>
 	{/each}
 </T.Group>

@@ -7,6 +7,7 @@
 	import Location from './location.svelte';
 	import { navigation, type Node, pickTwoRandomNodes } from './navigation';
 	import Roads from './roads.svelte';
+	import SplatRenderer from './splat-renderer.svelte';
 
 	interactivity();
 
