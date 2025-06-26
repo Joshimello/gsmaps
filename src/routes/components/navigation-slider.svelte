@@ -20,88 +20,273 @@
 	// Slider value (0 to 1)
 	let sliderValue = $state(0);
 
+	// Animation state for smooth stepping
+	let isAnimating = $state(false);
+	let animationStartValue = 0;
+	let animationTargetValue = 0;
+	let animationStartTime = 0;
+
+	// Calculate distance between two 3D points
+	function distance3D(p1: number[], p2: number[]): number {
+		return Math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2 + (p1[2] - p2[2]) ** 2);
+	}
+
+	// Calculate angle between three points (in degrees)
+	function calculateAngle(p1: number[], p2: number[], p3: number[]): number {
+		const v1 = [p1[0] - p2[0], p1[1] - p2[1], p1[2] - p2[2]];
+		const v2 = [p3[0] - p2[0], p3[1] - p2[1], p3[2] - p2[2]];
+
+		const dot = v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2];
+		const mag1 = Math.sqrt(v1[0] ** 2 + v1[1] ** 2 + v1[2] ** 2);
+		const mag2 = Math.sqrt(v2[0] ** 2 + v2[1] ** 2 + v2[2] ** 2);
+
+		if (mag1 === 0 || mag2 === 0) return 0;
+
+		const cosAngle = dot / (mag1 * mag2);
+		const angle = Math.acos(Math.max(-1, Math.min(1, cosAngle)));
+		return (angle * 180) / Math.PI;
+	}
+
+	// Filter path nodes to keep only important ones for smooth camera movement
+	const filteredCameraNodes = $derived(() => {
+		const nodes = pathNodes();
+		if (nodes.length <= 2) return nodes;
+
+		const filtered = [nodes[0]]; // Always keep first node
+		const minDistance = 25; // Minimum distance between camera nodes
+		const minAngleChange = 15; // Minimum angle change to consider a turn significant
+
+		for (let i = 1; i < nodes.length - 1; i++) {
+			const currentNode = nodes[i];
+			const lastFilteredNode = filtered[filtered.length - 1];
+
+			const dist = distance3D(
+				[currentNode.coordinates[0], currentNode.coordinates[2], currentNode.coordinates[1]],
+				[
+					lastFilteredNode.coordinates[0],
+					lastFilteredNode.coordinates[2],
+					lastFilteredNode.coordinates[1]
+				]
+			);
+
+			// Check if this node represents a significant direction change
+			let significantTurn = false;
+			if (filtered.length >= 1 && i < nodes.length - 1) {
+				const prevNode = lastFilteredNode;
+				const nextNode = nodes[i + 1];
+
+				const angle = calculateAngle(
+					[prevNode.coordinates[0], prevNode.coordinates[2], prevNode.coordinates[1]],
+					[currentNode.coordinates[0], currentNode.coordinates[2], currentNode.coordinates[1]],
+					[nextNode.coordinates[0], nextNode.coordinates[2], nextNode.coordinates[1]]
+				);
+
+				significantTurn = angle < 180 - minAngleChange;
+			}
+
+			// Keep node if it's far enough or represents a significant turn
+			if (dist >= minDistance || significantTurn) {
+				filtered.push(currentNode);
+			}
+		}
+
+		// Always keep the last node
+		if (filtered[filtered.length - 1] !== nodes[nodes.length - 1]) {
+			filtered.push(nodes[nodes.length - 1]);
+		}
+
+		return filtered;
+	});
+
+	// Catmull-Rom spline interpolation function
+	function catmullRomSpline(
+		p0: number[],
+		p1: number[],
+		p2: number[],
+		p3: number[],
+		t: number
+	): number[] {
+		const t2 = t * t;
+		const t3 = t2 * t;
+
+		return [
+			0.5 *
+				(2 * p1[0] +
+					(-p0[0] + p2[0]) * t +
+					(2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 +
+					(-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3),
+			0.5 *
+				(2 * p1[1] +
+					(-p0[1] + p2[1]) * t +
+					(2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 +
+					(-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3),
+			0.5 *
+				(2 * p1[2] +
+					(-p0[2] + p2[2]) * t +
+					(2 * p0[2] - 5 * p1[2] + 4 * p2[2] - p3[2]) * t2 +
+					(-p0[2] + 3 * p1[2] - 3 * p2[2] + p3[2]) * t3)
+		];
+	}
+
+	// Generate smooth camera path using filtered nodes and Catmull-Rom splines
+	const smoothCameraPath = $derived(() => {
+		const nodes = filteredCameraNodes();
+		if (nodes.length < 2) return [];
+
+		// Convert filtered node coordinates to camera coordinates (with height adjustment)
+		const cameraPoints = nodes.map((node) => [
+			node.coordinates[0],
+			node.coordinates[2] + 8, // Car-like height
+			node.coordinates[1]
+		]);
+
+		if (cameraPoints.length === 2) {
+			// For just 2 points, create simple interpolated path
+			const smoothPoints: number[][] = [];
+			const segments = 20;
+			for (let i = 0; i <= segments; i++) {
+				const t = i / segments;
+				smoothPoints.push([
+					cameraPoints[0][0] + (cameraPoints[1][0] - cameraPoints[0][0]) * t,
+					cameraPoints[0][1] + (cameraPoints[1][1] - cameraPoints[0][1]) * t,
+					cameraPoints[0][2] + (cameraPoints[1][2] - cameraPoints[0][2]) * t
+				]);
+			}
+			return smoothPoints;
+		}
+
+		const smoothPoints: number[][] = [];
+		const segmentsPerNode = 15; // More segments for smoother movement
+
+		for (let i = 0; i < cameraPoints.length - 1; i++) {
+			// Get control points for Catmull-Rom spline
+			const p0 =
+				i === 0
+					? // Extend backwards from first point
+						[
+							2 * cameraPoints[0][0] - cameraPoints[1][0],
+							2 * cameraPoints[0][1] - cameraPoints[1][1],
+							2 * cameraPoints[0][2] - cameraPoints[1][2]
+						]
+					: cameraPoints[i - 1];
+
+			const p1 = cameraPoints[i];
+			const p2 = cameraPoints[i + 1];
+
+			const p3 =
+				i === cameraPoints.length - 2
+					? // Extend forwards from last point
+						[
+							2 * cameraPoints[cameraPoints.length - 1][0] -
+								cameraPoints[cameraPoints.length - 2][0],
+							2 * cameraPoints[cameraPoints.length - 1][1] -
+								cameraPoints[cameraPoints.length - 2][1],
+							2 * cameraPoints[cameraPoints.length - 1][2] -
+								cameraPoints[cameraPoints.length - 2][2]
+						]
+					: cameraPoints[i + 2];
+
+			// Generate interpolated points for this segment
+			for (let j = 0; j < segmentsPerNode; j++) {
+				const t = j / segmentsPerNode;
+				const smoothPoint = catmullRomSpline(p0, p1, p2, p3, t);
+				smoothPoints.push(smoothPoint);
+			}
+		}
+
+		// Add the final point
+		smoothPoints.push(cameraPoints[cameraPoints.length - 1]);
+		return smoothPoints;
+	});
+
 	// Calculate camera position and look-at target based on slider value
 	const cameraData = $derived(() => {
 		const nodes = pathNodes();
-		if (nodes.length < 2) return null;
+		const smoothPath = smoothCameraPath();
+		if (nodes.length < 2 || smoothPath.length === 0) return null;
 
-		// Convert slider value (0-1) to path progress
-		const totalSegments = nodes.length - 1;
-		const progress = sliderValue * totalSegments;
-		const segmentIndex = Math.floor(progress);
-		const segmentProgress = progress - segmentIndex;
+		// Convert slider value (0-1) to smooth path progress
+		const totalPoints = smoothPath.length - 1;
+		const progress = sliderValue * totalPoints;
+		const pointIndex = Math.floor(progress);
+		const pointProgress = progress - pointIndex;
 
 		// Handle edge cases
-		if (segmentIndex >= totalSegments) {
-			const lastNode = nodes[nodes.length - 1];
-			const prevNode = nodes[nodes.length - 2];
+		if (pointIndex >= totalPoints) {
+			const lastPoint = smoothPath[smoothPath.length - 1];
+			const prevPoint = smoothPath[Math.max(0, smoothPath.length - 2)];
 
-			// Position at road level
-			const position = [
-				lastNode.coordinates[0],
-				lastNode.coordinates[2] + 8, // Car-like height
-				lastNode.coordinates[1]
-			];
+			const position = [...lastPoint];
 
-			// Look in the direction from previous to current node
-			const directionX = lastNode.coordinates[0] - prevNode.coordinates[0];
-			const directionZ = lastNode.coordinates[1] - prevNode.coordinates[1];
-			const directionY = lastNode.coordinates[2] - prevNode.coordinates[2];
+			// Look in the direction from previous to current point
+			const directionX = lastPoint[0] - prevPoint[0];
+			const directionY = lastPoint[1] - prevPoint[1];
+			const directionZ = lastPoint[2] - prevPoint[2];
 
 			// Normalize and extend the look direction
 			const dirLength = Math.sqrt(
-				directionX * directionX + directionZ * directionZ + directionY * directionY
+				directionX * directionX + directionY * directionY + directionZ * directionZ
 			);
 			const normalizedDirX = dirLength > 0 ? directionX / dirLength : 1;
-			const normalizedDirZ = dirLength > 0 ? directionZ / dirLength : 0;
 			const normalizedDirY = dirLength > 0 ? directionY / dirLength : 0;
+			const normalizedDirZ = dirLength > 0 ? directionZ / dirLength : 0;
 
 			const target = [
-				lastNode.coordinates[0] + normalizedDirX * 30,
-				lastNode.coordinates[2] + normalizedDirY * 30 + 10,
-				lastNode.coordinates[1] + normalizedDirZ * 30
+				lastPoint[0] + normalizedDirX * 30,
+				lastPoint[1] + normalizedDirY * 30 + 2,
+				lastPoint[2] + normalizedDirZ * 30
 			];
 
 			return { position, target };
 		}
 
-		// Interpolate between current and next node for position
-		const currentNode = nodes[segmentIndex];
-		const nextNode = nodes[segmentIndex + 1];
+		// Interpolate between current and next smooth point for position
+		const currentPoint = smoothPath[pointIndex];
+		const nextPoint = smoothPath[pointIndex + 1];
 
-		const x =
-			currentNode.coordinates[0] +
-			(nextNode.coordinates[0] - currentNode.coordinates[0]) * segmentProgress;
-		const z =
-			currentNode.coordinates[1] +
-			(nextNode.coordinates[1] - currentNode.coordinates[1]) * segmentProgress;
-		const y =
-			currentNode.coordinates[2] +
-			(nextNode.coordinates[2] - currentNode.coordinates[2]) * segmentProgress +
-			8; // Slightly elevated for car-like view
-
-		const position = [x, y, z];
-
-		// Calculate look-at target (point ahead on the path)
-		const directionX = nextNode.coordinates[0] - currentNode.coordinates[0];
-		const directionZ = nextNode.coordinates[1] - currentNode.coordinates[1];
-		const directionY = nextNode.coordinates[2] - currentNode.coordinates[2];
-
-		// Normalize direction vector
-		const dirLength = Math.sqrt(
-			directionX * directionX + directionZ * directionZ + directionY * directionY
-		);
-		const normalizedDirX = dirLength > 0 ? directionX / dirLength : 0;
-		const normalizedDirZ = dirLength > 0 ? directionZ / dirLength : 0;
-		const normalizedDirY = dirLength > 0 ? directionY / dirLength : 0;
-
-		// Project forward along the path direction
-		const lookAheadDistance = 30;
-		const target = [
-			x + normalizedDirX * lookAheadDistance,
-			y + normalizedDirY * lookAheadDistance + 2, // Look slightly up for better view
-			z + normalizedDirZ * lookAheadDistance
+		const position = [
+			currentPoint[0] + (nextPoint[0] - currentPoint[0]) * pointProgress,
+			currentPoint[1] + (nextPoint[1] - currentPoint[1]) * pointProgress,
+			currentPoint[2] + (nextPoint[2] - currentPoint[2]) * pointProgress
 		];
+
+		// Calculate look-at target (point ahead on the smooth path)
+		const lookAheadDistance = Math.max(8, Math.floor(smoothPath.length * 0.05)); // Dynamic look-ahead
+		const lookAheadIndex = Math.min(pointIndex + lookAheadDistance, smoothPath.length - 1);
+		const lookAheadPoint = smoothPath[lookAheadIndex];
+
+		// Calculate smooth target direction
+		let target: number[];
+		if (lookAheadIndex === pointIndex || lookAheadDistance < 3) {
+			// Near the end - use forward projection from current direction
+			const prevIndex = Math.max(0, pointIndex - 2);
+			const prevPoint = smoothPath[prevIndex];
+
+			const directionX = position[0] - prevPoint[0];
+			const directionY = position[1] - prevPoint[1];
+			const directionZ = position[2] - prevPoint[2];
+
+			const dirLength = Math.sqrt(
+				directionX * directionX + directionY * directionY + directionZ * directionZ
+			);
+
+			if (dirLength > 0) {
+				const normalizedDirX = directionX / dirLength;
+				const normalizedDirY = directionY / dirLength;
+				const normalizedDirZ = directionZ / dirLength;
+
+				target = [
+					position[0] + normalizedDirX * 25,
+					position[1] + normalizedDirY * 25 + 1,
+					position[2] + normalizedDirZ * 25
+				];
+			} else {
+				target = [position[0] + 25, position[1] + 1, position[2]];
+			}
+		} else {
+			// Look towards the ahead point with slight upward bias
+			target = [lookAheadPoint[0], lookAheadPoint[1] + 1, lookAheadPoint[2]];
+		}
 
 		return { position, target };
 	});
@@ -113,6 +298,35 @@
 			onPositionChange({ ...data, isActive: pathCameraActive });
 		}
 	});
+
+	// Animation function for smooth stepping
+	function animateSliderTo(targetValue: number, duration: number = 250) {
+		if (isAnimating) return; // Prevent overlapping animations
+
+		isAnimating = true;
+		animationStartValue = sliderValue;
+		animationTargetValue = targetValue;
+		animationStartTime = performance.now();
+
+		function animate(currentTime: number) {
+			const elapsed = currentTime - animationStartTime;
+			const progress = Math.min(elapsed / duration, 1);
+
+			// Ease-out function for smooth deceleration
+			const easeOut = 1 - Math.pow(1 - progress, 3);
+
+			sliderValue = animationStartValue + (animationTargetValue - animationStartValue) * easeOut;
+
+			if (progress < 1) {
+				requestAnimationFrame(animate);
+			} else {
+				isAnimating = false;
+				sliderValue = animationTargetValue; // Ensure exact final value
+			}
+		}
+
+		requestAnimationFrame(animate);
+	}
 
 	// Show current progress as percentage
 	const progressPercentage = $derived(Math.round(sliderValue * 100));
@@ -179,24 +393,32 @@
 		</div>
 
 		<div class="slider-controls">
-			<button onclick={() => (sliderValue = 0)} class="control-btn" disabled={sliderValue === 0}>
+			<button
+				onclick={() => animateSliderTo(0)}
+				class="control-btn"
+				disabled={sliderValue === 0 || isAnimating}
+			>
 				🏁 Start
 			</button>
 			<button
-				onclick={() => (sliderValue = Math.max(0, sliderValue - 0.05))}
+				onclick={() => animateSliderTo(Math.max(0, sliderValue - 0.02))}
 				class="control-btn"
-				disabled={sliderValue === 0}
+				disabled={sliderValue === 0 || isAnimating}
 			>
 				⬅️ Step Back
 			</button>
 			<button
-				onclick={() => (sliderValue = Math.min(1, sliderValue + 0.05))}
+				onclick={() => animateSliderTo(Math.min(1, sliderValue + 0.02))}
 				class="control-btn"
-				disabled={sliderValue === 1}
+				disabled={sliderValue === 1 || isAnimating}
 			>
 				➡️ Step Forward
 			</button>
-			<button onclick={() => (sliderValue = 1)} class="control-btn" disabled={sliderValue === 1}>
+			<button
+				onclick={() => animateSliderTo(1)}
+				class="control-btn"
+				disabled={sliderValue === 1 || isAnimating}
+			>
 				🎯 End
 			</button>
 		</div>

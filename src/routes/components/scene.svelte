@@ -35,7 +35,7 @@
 	}
 </script>
 
-{#if states.mode == 'three'}
+{#if states.mode == 'three' && false}
 	<T.Group rotation={[-Math.PI / 2, 0, 0]} scale={[100, 100, 100]} position={[0, -20, 20]}>
 		<SplatRenderer />
 	</T.Group>
