@@ -11,6 +11,11 @@
 	// Toggle for path camera mode
 	let pathCameraActive = $state(true);
 
+	// Camera height smoothing options
+	let smoothHeight = $state(true);
+	let lockPitch = $state(true);
+	let fixedCameraHeight = $state(15); // Fixed height when pitch is locked
+
 	// Get the navigation path nodes
 	const pathNodes = $derived(() => {
 		if (states.navigationPath.length === 0) return [];
@@ -134,11 +139,29 @@
 		if (nodes.length < 2) return [];
 
 		// Convert filtered node coordinates to camera coordinates (with height adjustment)
-		const cameraPoints = nodes.map((node) => [
-			node.coordinates[0],
-			node.coordinates[2] + 8, // Car-like height
-			node.coordinates[1]
-		]);
+		const cameraPoints = nodes.map((node, index) => {
+			let height;
+			if (lockPitch) {
+				// Use fixed height when pitch is locked
+				height = fixedCameraHeight;
+			} else if (smoothHeight && index > 0) {
+				// Smooth height transitions
+				const prevHeight = nodes[index - 1].coordinates[2] + 8;
+				const currentHeight = node.coordinates[2] + 8;
+				const heightDiff = currentHeight - prevHeight;
+				// Limit height changes to prevent jerky movements
+				const maxHeightChange = 5;
+				if (Math.abs(heightDiff) > maxHeightChange) {
+					height = prevHeight + Math.sign(heightDiff) * maxHeightChange;
+				} else {
+					height = currentHeight;
+				}
+			} else {
+				height = node.coordinates[2] + 8; // Car-like height
+			}
+
+			return [node.coordinates[0], height, node.coordinates[1]];
+		});
 
 		if (cameraPoints.length === 2) {
 			// For just 2 points, create simple interpolated path
@@ -263,7 +286,7 @@
 			const prevPoint = smoothPath[prevIndex];
 
 			const directionX = position[0] - prevPoint[0];
-			const directionY = position[1] - prevPoint[1];
+			const directionY = lockPitch ? 0 : position[1] - prevPoint[1]; // Lock Y direction if pitch locked
 			const directionZ = position[2] - prevPoint[2];
 
 			const dirLength = Math.sqrt(
@@ -272,20 +295,27 @@
 
 			if (dirLength > 0) {
 				const normalizedDirX = directionX / dirLength;
-				const normalizedDirY = directionY / dirLength;
+				const normalizedDirY = lockPitch ? 0 : directionY / dirLength; // No vertical look when pitch locked
 				const normalizedDirZ = directionZ / dirLength;
 
+				const targetHeight = lockPitch ? fixedCameraHeight : position[1] + normalizedDirY * 25 + 1;
 				target = [
 					position[0] + normalizedDirX * 25,
-					position[1] + normalizedDirY * 25 + 1,
+					targetHeight,
 					position[2] + normalizedDirZ * 25
 				];
 			} else {
-				target = [position[0] + 25, position[1] + 1, position[2]];
+				const targetHeight = lockPitch ? fixedCameraHeight : position[1] + 1;
+				target = [position[0] + 25, targetHeight, position[2]];
 			}
 		} else {
-			// Look towards the ahead point with slight upward bias
-			target = [lookAheadPoint[0], lookAheadPoint[1] + 1, lookAheadPoint[2]];
+			// Look towards the ahead point with controlled height
+			const targetHeight = lockPitch
+				? fixedCameraHeight
+				: smoothHeight
+					? position[1] + Math.max(-2, Math.min(2, lookAheadPoint[1] - position[1])) + 1
+					: lookAheadPoint[1] + 1;
+			target = [lookAheadPoint[0], targetHeight, lookAheadPoint[2]];
 		}
 
 		return { position, target };
@@ -343,13 +373,35 @@
 {#if states.navigationPath.length > 0 && pathNodes().length > 1}
 	<div class="navigation-slider-container">
 		<div class="slider-info">
-			<!-- <div class="camera-toggle">
-				<label class="toggle-label">
-					<input type="checkbox" bind:checked={pathCameraActive} class="toggle-checkbox" />
-					<span class="toggle-text">
-						{pathCameraActive ? '📹 Path Camera ON' : '🎮 Free Camera'}
-					</span>
-				</label>
+			<!-- <div class="camera-controls">
+				<div class="camera-toggle">
+					<label class="toggle-label">
+						<input type="checkbox" bind:checked={smoothHeight} class="toggle-checkbox" />
+						<span class="toggle-text">🎢 Smooth Height</span>
+					</label>
+				</div>
+				<div class="camera-toggle">
+					<label class="toggle-label">
+						<input type="checkbox" bind:checked={lockPitch} class="toggle-checkbox" />
+						<span class="toggle-text">🔒 Lock Pitch</span>
+					</label>
+				</div>
+				{#if lockPitch}
+					<div class="height-control">
+						<label class="height-label">
+							Height:
+							<input
+								type="range"
+								min="5"
+								max="30"
+								step="1"
+								bind:value={fixedCameraHeight}
+								class="height-slider"
+							/>
+							<span class="height-value">{fixedCameraHeight}m</span>
+						</label>
+					</div>
+				{/if}
 			</div> -->
 			<div class="progress-text">
 				<span class="font-semibold">🚗 Driving Progress:</span>
@@ -457,29 +509,76 @@
 		gap: 0.5rem;
 	}
 
+	.camera-controls {
+		margin-bottom: 0.75rem;
+		padding: 0.75rem;
+		background: rgba(249, 250, 251, 0.8);
+		border-radius: 0.5rem;
+		border: 1px solid rgba(229, 231, 235, 0.5);
+	}
+
 	.camera-toggle {
 		margin-bottom: 0.5rem;
-		text-align: center;
+		display: flex;
+		align-items: center;
+		justify-content: flex-start;
 	}
 
 	.toggle-label {
 		display: flex;
 		align-items: center;
-		justify-content: center;
 		gap: 0.5rem;
 		cursor: pointer;
-		font-size: 0.875rem;
+		font-size: 0.75rem;
 		font-weight: 500;
 	}
 
 	.toggle-checkbox {
-		width: 1rem;
-		height: 1rem;
+		width: 0.875rem;
+		height: 0.875rem;
 		cursor: pointer;
 	}
 
 	.toggle-text {
 		color: #374151;
+	}
+
+	.height-control {
+		margin-top: 0.5rem;
+		padding-top: 0.5rem;
+		border-top: 1px solid rgba(229, 231, 235, 0.5);
+	}
+
+	.height-label {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.75rem;
+		color: #4b5563;
+	}
+
+	.height-slider {
+		width: 100px;
+		height: 4px;
+		background: #e5e7eb;
+		border-radius: 2px;
+		appearance: none;
+		cursor: pointer;
+	}
+
+	.height-slider::-webkit-slider-thumb {
+		appearance: none;
+		width: 12px;
+		height: 12px;
+		background: #3b82f6;
+		border-radius: 50%;
+		cursor: pointer;
+	}
+
+	.height-value {
+		font-weight: 600;
+		color: #3b82f6;
+		min-width: 2rem;
 	}
 
 	.speed-indicator {
