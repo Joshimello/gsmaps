@@ -90,14 +90,14 @@
 
 	function findNodeByLocationId(locationId: number): Node | null {
 		// Find the building/location data
-		const location = data.locations.find(loc => loc.id === locationId);
+		const location = data.locations.find((loc) => loc.id === locationId);
 		if (!location) return null;
 
 		// Calculate center point of the building
 		const coordinates = location.geometry.coordinates;
 		const centerX = coordinates.reduce((sum, coord) => sum + coord[0], 0) / coordinates.length;
 		const centerZ = coordinates.reduce((sum, coord) => sum + coord[1], 0) / coordinates.length;
-		const centerY = location.geometry.start_height + (location.geometry.height / 2);
+		const centerY = location.geometry.start_height + location.geometry.height / 2;
 
 		let closestNode: Node | null = null;
 		let minDistance = Infinity;
@@ -107,8 +107,8 @@
 			const nodeCoords = node.coordinates;
 			const distance = Math.sqrt(
 				Math.pow(nodeCoords[0] - centerX, 2) +
-				Math.pow(nodeCoords[1] - centerY, 2) +
-				Math.pow(nodeCoords[2] - centerZ, 2)
+					Math.pow(nodeCoords[1] - centerY, 2) +
+					Math.pow(nodeCoords[2] - centerZ, 2)
 			);
 
 			if (distance < minDistance) {
@@ -288,7 +288,6 @@
 <!-- Navigation Dialog -->
 <Dialog.Root bind:open={dialogOpen}>
 	<Dialog.Portal>
-		<Dialog.Overlay />
 		<Dialog.Content class="max-w-md">
 			<Dialog.Header>
 				<Dialog.Title>Navigate to {locationData.name.en}</Dialog.Title>

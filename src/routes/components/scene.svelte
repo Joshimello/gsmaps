@@ -1,7 +1,7 @@
 <script lang="ts">
 	import data from '$lib/data';
 	import { T } from '@threlte/core';
-	import { interactivity } from '@threlte/extras';
+	import { Environment, interactivity } from '@threlte/extras';
 	import { states } from '../states.svelte';
 	import Camera from './camera.svelte';
 	import Location from './location.svelte';
@@ -34,6 +34,8 @@
 		window.addEventListener('generateDemoPath', generateNewPath);
 	}
 </script>
+
+<Environment isBackground={true} url={'/evening_road_01_puresky_1k.hdr'} />
 
 {#if states.mode == 'three'}
 	<T.Group rotation={[-Math.PI / 2, 0, 0]} scale={[100, 100, 100]} position={[0, -20, 20]}>
